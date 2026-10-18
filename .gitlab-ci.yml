@@ -1,0 +1,7 @@
+include:
+  - project: 'agents/platform'
+    ref: v0.1.2
+    file: '/ci/skill-ci.gitlab-ci.yml'
+
+# Profile distribution: static validation (SKILL metadata, yaml/shell/python lint,
+# secret scan) + the offline scaffold smoke test. No live Wazuh/VT/MISP/network.

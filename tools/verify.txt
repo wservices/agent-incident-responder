@@ -1,0 +1,7 @@
+jq
+rg
+tshark
+yara
+fls
+mactime
+exiftool

@@ -1,0 +1,16 @@
+# incident-responder role tool layer (APT). Several core tools also ship in the
+# shared base image (skills/security/security-tooling); listed here are the
+# role-specific additions plus the core tools this role depends on, so the
+# manifest is self-sufficient if the base image is not used.
+#
+# Core (also in base image):
+jq
+ripgrep                 # provides rg — fast evidence search
+tshark                  # CLI packet/PCAP analysis (offline)
+# Role-specific additions:
+yara                    # static pattern-match on suspect files (no execution)
+sleuthkit               # provides fls/mactime/mmls — filesystem timelines
+libimage-exiftool-perl  # provides exiftool — file metadata extraction
+# NOT apt-installable (installed via pip — see tools/README.md):
+#   volatility3          -> memory forensics (vol)
+#   plaso / log2timeline -> super-timelines (log2timeline.py, psort.py, pinfo.py)

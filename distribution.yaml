@@ -1,0 +1,58 @@
+# Hermes profile distribution manifest for the Incident Responder role.
+# Install:  hermes profile install https://github.com/wservices/agent-incident-responder.git
+# Fields validated against hermes_cli/profile_distribution.py (Hermes 0.21.x).
+
+name: incident-responder
+version: 0.1.0
+description: >-
+  Incident Response Analyst: owns the confirmed-incident lifecycle end to end
+  per NIST SP 800-61r2 — scopes and triages the incident and starts the IR clock,
+  performs safe STATIC malware triage (hashes/strings/PE-ELF/YARA, no detonation),
+  reconstructs forensic super-timelines, extracts/defangs/enriches IOCs, correlates
+  SIEM/EDR alerts across hosts and time into a single incident, and proposes
+  containment / eradication / recovery with an evidence-backed incident report and
+  a validated handoff. Receives escalations from the SOC Analyst (security-analyst)
+  and escalates major incidents to the Security Team Lead. Advisory and read-only:
+  it proposes containment; humans execute. (Kanban decomposer: routes confirmed
+  security-incident, incident-triage/scoping, static-malware-triage, forensic
+  timeline, IOC-enrichment, SIEM/EDR alert-correlation, and containment/recovery
+  planning tasks here.)
+hermes_requires: ">=0.21.0"
+author: Pascal (pascal), Hermes Agent
+license: MIT
+
+# config.yaml is intentionally NOT distribution-owned, so installing this role
+# never overwrites the user's model/provider choice. The role layers SOUL.md,
+# skills/, and the env vars below onto the user's base config.
+distribution_owned:
+  - SOUL.md
+  - skills
+  - distribution.yaml
+  - changelogs
+
+# Credentials the role needs. Hermes generates a .env.EXAMPLE from these; the
+# user fills a real .env (never committed) and forwards the names via
+# docker_forward_env into the Kali sandbox. Values are never logged. Every
+# integration is read-only / least-privilege; the role takes no response actions.
+env_requires:
+  - name: WAZUH_API_URL
+    required: false
+    description: "Wazuh Server API base URL, e.g. https://wazuh.internal:55000 (read-only)"
+  - name: WAZUH_API_USER
+    required: false
+    description: "Read-only Wazuh Server API user (RBAC: *:read only)"
+  - name: WAZUH_API_PASSWORD
+    required: false
+    description: "Password for the read-only Wazuh Server API user"
+  - name: WAZUH_INDEXER_URL
+    required: false
+    description: "Wazuh Indexer (OpenSearch) URL for cross-host alert correlation, e.g. https://wazuh.internal:9200"
+  - name: VIRUSTOTAL_API_KEY
+    required: false
+    description: "Optional VirusTotal API key for hash/IOC enrichment (metadata lookups only; no file uploads)"
+  - name: MISP_URL
+    required: false
+    description: "Optional MISP threat-intel platform base URL, e.g. https://misp.internal (read-only)"
+  - name: MISP_API_KEY
+    required: false
+    description: "Optional MISP automation key (read-only role) for IOC enrichment/correlation"
