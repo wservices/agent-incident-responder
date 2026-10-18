@@ -1,7 +1,7 @@
 ---
 name: ioc-extraction-and-enrichment
 description: Extract, defang, and enrich incident IOCs.
-version: 0.1.0
+version: 0.2.0
 author: Pascal (pascal), Hermes Agent
 license: MIT
 platforms: [linux]
@@ -38,9 +38,14 @@ internal hostnames/IPs, and un-cleared indicators never leave the environment.
 
 ## How to Run
 
-Extract + defang (local, no network):
+Extract + defang every indicator type in one pass (local, no network). This is
+the authoritative extractor — `scripts/ioc_extract.py` classifies IPv4/IPv6,
+domains, URLs, emails, and MD5/SHA1/SHA256, and defangs by default:
 
-`terminal(command="rg -oN --no-filename -e '([0-9]{1,3}\\.){3}[0-9]{1,3}' -e 'https?://[^ \"]+' cases/INC-2026-0007/evidence/ | sort -u > iocs/raw.txt", timeout=60)`
+`terminal(command="python3 scripts/ioc_extract.py --json --public-only cases/INC-2026-0007/evidence/strings.txt > iocs/public.json", timeout=30)`
+
+`--public-only` drops RFC1918/loopback/CGNAT so only externally meaningful
+indicators reach enrichment; `--no-defang` emits raw values to feed another tool.
 
 Enrich a hash via VirusTotal (metadata only, key from env, never logged):
 
@@ -49,10 +54,12 @@ Enrich a hash via VirusTotal (metadata only, key from env, never logged):
 ## Quick Reference
 
 ```
-# extract (then defang before any report)
+# extract + defang all IOC types (authoritative; stdin or files)
+python3 scripts/ioc_extract.py --json evidence/strings.txt
+cat evidence/*.log | python3 scripts/ioc_extract.py --public-only   # external only
+python3 scripts/ioc_extract.py --no-defang evidence/strings.txt     # raw, to feed a tool
+# ad-hoc grep fallback (defang before any report): 1.2.3.4 -> 1[.]2[.]3[.]4 ; http -> hxxp
 rg -oN -e '([0-9]{1,3}\.){3}[0-9]{1,3}' -e 'https?://\S+' evidence/ | sort -u
-# defang for reports: 1.2.3.4 -> 1[.]2[.]3[.]4 ; http -> hxxp
-sed -E 's/\./[.]/g; s|http|hxxp|g' iocs/raw.txt > iocs/defanged.txt
 # VirusTotal: file / domain / ip (metadata, no upload)
 curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" https://www.virustotal.com/api/v3/domains/<domain> | jq .data.attributes.last_analysis_stats
 # MISP: search an attribute value (read-only)
@@ -92,7 +99,10 @@ curl -s -H "Authorization: $MISP_API_KEY" -H 'Accept: application/json' "$MISP_U
 
 ## Verification
 
-- A round trip holds: defanged output re-fanged and re-extracted yields the same
+- `python3 -m pytest tests/test_ioc_extract.py -q` covers IPv4/IPv6/URL/domain/
+  email/hash extraction, defang-by-default, `--public-only` filtering, and that a
+  syslog time is not mis-read as IPv6 (offline).
+- A round trip holds: `--no-defang` output re-extracted yields the same
   indicator set.
 - `jq -e . iocs/vt-<hash>.json` exits 0 for any enrichment saved (valid JSON).
 - Every indicator in the report is defanged (`rg -n 'https?://|(\d+\.){3}\d+' report.md`

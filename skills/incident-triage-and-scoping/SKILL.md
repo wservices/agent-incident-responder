@@ -1,7 +1,7 @@
 ---
 name: incident-triage-and-scoping
 description: Classify severity and scope a confirmed incident.
-version: 0.1.0
+version: 0.2.0
 author: Pascal (pascal), Hermes Agent
 license: MIT
 platforms: [linux]
@@ -41,6 +41,13 @@ investigation beyond the evidence that justifies it.
 
 `terminal(command="mkdir -p cases/INC-2026-0007/{evidence,timeline,iocs} && jq . handoff.yaml", timeout=30)`
 
+Compute a NIST SP 800-61r2 severity + priority and a scope summary (affected-asset
+and indicator counts) from the impact ratings — by flags or an incident YAML:
+
+`terminal(command="python3 scripts/incident_scope.py --functional-impact high --information-impact integrity --recoverability extended --json", timeout=30)`
+
+`terminal(command="python3 scripts/incident_scope.py --incident cases/INC-2026-0007/incident.yaml --json", timeout=30)`
+
 Then record severity + scope in `cases/<id>/triage.md` and the clock in
 `cases/<id>/case.yaml` (start time = first-response UTC).
 
@@ -48,6 +55,9 @@ Then record severity + scope in `cases/<id>/triage.md` and the clock in
 
 ```
 jq '.handoff | {task_id, scope, summary, findings}' handoff.yaml   # read the escalation
+# NIST 800-61 severity/priority + scope counts (flags or --incident YAML)
+python3 scripts/incident_scope.py --functional-impact medium \
+  --information-impact proprietary --recoverability supplemented
 date -u +%Y-%m-%dT%H:%M:%SZ                                        # IR clock t0 (UTC)
 rg -n 'CRITICAL|ransom|exfil|lateral' cases/INC-*/evidence/        # fast severity signals
 jq -r '.handoff.findings[].evidence_refs[]' handoff.yaml           # list evidence to pull
@@ -83,6 +93,9 @@ jq -r '.handoff.findings[].evidence_refs[]' handoff.yaml           # list eviden
 
 ## Verification
 
+- `python3 -m pytest tests/test_incident_scope.py -q` checks the impact→severity
+  mapping (not-recoverable→Critical, high-functional/integrity→High, the Medium/Low
+  bands) and the asset/indicator scope counts (offline).
 - `jq -e '.handoff.task_id' handoff.yaml` exits 0 and that id is reused as the
   case id (grep it in `case.yaml`).
 - `case.yaml` contains a severity, a UTC `response_started_at`, and an asset list

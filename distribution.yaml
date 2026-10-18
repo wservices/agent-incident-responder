@@ -3,7 +3,7 @@
 # Fields validated against hermes_cli/profile_distribution.py (Hermes 0.21.x).
 
 name: incident-responder
-version: 0.1.0
+version: 0.2.0
 description: >-
   Incident Response Analyst: owns the confirmed-incident lifecycle end to end
   per NIST SP 800-61r2 — scopes and triages the incident and starts the IR clock,

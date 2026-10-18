@@ -1,7 +1,7 @@
 ---
 name: incident-reporting
 description: NIST incident report and a validated handoff.
-version: 0.1.0
+version: 0.2.0
 author: Pascal (pascal), Hermes Agent
 license: MIT
 platforms: [linux]
@@ -39,17 +39,20 @@ every claim, and defanged indicators throughout.
 ## How to Run
 
 Fill `templates/report.md` into `cases/<id>/report.md`, emit `handoff.yaml` from
-`templates/handoff.yaml`, then validate the handoff structure:
+`templates/handoff.yaml`, then validate the handoff against the platform
+HANDOFF-FORMAT schema with `scripts/validate_handoff.py` (checks required fields,
+`status`/`required_approval` enums, per-finding `confidence`/`basis`/`evidence_refs`,
+and indicator dispositions):
 
-`terminal(command="python3 -c \"import yaml; h=yaml.safe_load(open('cases/INC-2026-0007/handoff.yaml'))['handoff']; req=['task_id','originating_agent','receiving_agent','created_at','summary','findings','status']; m=[k for k in req if k not in h]; assert not m, 'missing: '+','.join(m); assert all('confidence' in f and 'basis' in f for f in h['findings']), 'finding needs confidence+basis'; print('handoff OK')\"", timeout=30)`
+`terminal(command="python3 scripts/validate_handoff.py cases/INC-2026-0007/handoff.yaml", timeout=30)`
 
 ## Quick Reference
 
 ```
 cp skills/incident-reporting/templates/report.md   cases/INC-2026-0007/report.md
 cp skills/incident-reporting/templates/handoff.yaml cases/INC-2026-0007/handoff.yaml
-# validate the handoff is well-formed YAML and complete
-python3 -c "import yaml;yaml.safe_load(open('cases/INC-2026-0007/handoff.yaml'))"
+# validate the handoff against the HANDOFF-FORMAT schema (exit 0 = valid)
+python3 scripts/validate_handoff.py cases/INC-2026-0007/handoff.yaml
 # optional: render the report to PDF (companion skill markdown-to-pdf)
 pandoc cases/INC-2026-0007/report.md -o report.pdf --pdf-engine=wkhtmltopdf
 ```
@@ -87,10 +90,11 @@ pandoc cases/INC-2026-0007/report.md -o report.pdf --pdf-engine=wkhtmltopdf
 
 ## Verification
 
-- The `How to Run` validation prints `handoff OK` (required fields present; every
-  finding has `confidence` + `basis`).
-- `python3 -c "import yaml;yaml.safe_load(open('cases/<id>/handoff.yaml'))"` exits 0
-  (well-formed YAML).
+- `python3 scripts/validate_handoff.py cases/<id>/handoff.yaml` prints `handoff OK`
+  and exits 0 (required fields present; every finding has `confidence` + `basis` +
+  `evidence_refs`; enums and indicator dispositions valid).
+- `python3 -m pytest tests/test_validate_handoff.py -q` exercises the schema rules
+  and confirms the bundled `templates/handoff.yaml` validates (offline).
 - A reviewer can reproduce every finding from its evidence reference alone, and the
   report contains: summary, UTC timeline, labeled findings, defanged IOCs, justified
   ATT&CK mapping, and clearly-proposed response actions.

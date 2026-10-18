@@ -1,12 +1,12 @@
 ---
 name: forensic-timeline-reconstruction
 description: Build a forensic super-timeline from artifacts.
-version: 0.1.0
+version: 0.2.0
 author: Pascal (pascal), Hermes Agent
 license: MIT
 platforms: [linux]
 prerequisites:
-  commands: [log2timeline.py, psort.py, fls, mactime]
+  commands: [python3, log2timeline.py, psort.py, fls, mactime]
 metadata:
   hermes:
     tags: [forensics, timeline, plaso, sleuthkit, dfir]
@@ -49,6 +49,12 @@ Plaso super-timeline (collect → sort to CSV):
 
 `terminal(command="log2timeline.py --storage-file timeline/plaso.db cases/INC-2026-0007/evidence/disk.img && psort.py -o l2tcsv -w timeline/super-timeline.csv timeline/plaso.db", timeout=600)`
 
+Fuse already-extracted events (syslog + CSV + `<ISO8601> <msg>` lines) into ONE
+sorted super-timeline, each row tagged with its source file — stdlib, offline,
+no image needed (complements plaso when you only have exported artifacts):
+
+`terminal(command="python3 scripts/timeline_build.py --year 2026 --csv-out cases/INC-2026-0007/evidence/auth.log cases/INC-2026-0007/evidence/app.csv cases/INC-2026-0007/evidence/edr.iso > timeline/merged.csv", timeout=60)`
+
 ## Quick Reference
 
 ```
@@ -59,6 +65,9 @@ log2timeline.py --storage-file plaso.db <image|dir>    # collect all parsers
 pinfo.py plaso.db                                      # what was parsed + counts
 psort.py -o l2tcsv -w super-timeline.csv plaso.db \
   "date > '2026-10-14 00:00:00' AND date < '2026-10-16 00:00:00'"   # window filter
+# fuse exported artifacts into one sorted, source-tagged timeline (stdlib)
+python3 scripts/timeline_build.py --year 2026 --json auth.log app.csv edr.iso
+python3 scripts/timeline_build.py --ts-column when --csv-out events.csv > merged.csv
 ```
 
 ## Procedure
@@ -94,6 +103,9 @@ psort.py -o l2tcsv -w super-timeline.csv plaso.db \
 
 ## Verification
 
+- `python3 -m pytest tests/test_timeline_build.py -q` covers syslog/ISO/CSV
+  parsing, UTC normalization of offsets, chronological merge ordering, and
+  per-row source provenance (offline).
 - `log2timeline.py --version` and `mactime -V` (or `fls -V`) exit 0.
 - `pinfo.py timeline/plaso.db` lists at least one parser with a non-zero event
   count; the CSV row count matches the reported window.
